@@ -8,6 +8,13 @@
     ]
   },
   "webcredentials": {
-    "apps": [ "VWR39LZW5M.com.dnz.showsourcing" ]
+    "apps": [
+      "VWR39LZW5M.com.dnz.showsourcing"
+    ]
+  },
+  "activitycontinuation": {
+    "apps": [
+      "VWR39LZW5M.com.dnz.showsourcing"
+    ]
   }
 }
