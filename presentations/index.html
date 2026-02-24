@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Presentations — The Fesco Group</title>
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&f[]=cabinet-grotesk@700,800&display=swap">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'General Sans', sans-serif;
+  background: #fafaf8;
+  color: #1a1a1a;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+.container {
+  max-width: 560px;
+  width: 100%;
+}
+.header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+.header h1 {
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-size: clamp(1.5rem, 4vw, 2.2rem);
+  font-weight: 800;
+  color: #1a1a1a;
+  margin-bottom: 0.3rem;
+}
+.header p {
+  color: #888;
+  font-size: 0.9rem;
+}
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+a.card {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1.25rem 1.5rem;
+  background: #fff;
+  border: 1px solid #e8e8e4;
+  border-radius: 12px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+}
+a.card:hover {
+  border-color: #ccc;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+  transform: translateY(-2px);
+}
+.card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1.2rem;
+}
+.card-text h2 {
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 0.15rem;
+}
+.card-text p {
+  font-size: 0.8rem;
+  color: #888;
+}
+.card-arrow {
+  margin-left: auto;
+  color: #ccc;
+  font-size: 1.1rem;
+  transition: color 0.2s;
+}
+a.card:hover .card-arrow { color: #888; }
+.footer {
+  text-align: center;
+  margin-top: 3rem;
+  font-size: 0.75rem;
+  color: #bbb;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>Presentations</h1>
+    <p>The Fesco Group</p>
+  </div>
+  <div class="cards">
+    <a class="card" href="https://moshed.github.io/kohls-holiday-2026/">
+      <div class="card-icon" style="background: rgba(139,105,20,0.08); color: #8B6914;">K</div>
+      <div class="card-text">
+        <h2>Kohl's Holiday 2026</h2>
+        <p>27 products across 7 categories</p>
+      </div>
+      <div class="card-arrow">&rsaquo;</div>
+    </a>
+    <a class="card" href="https://moshed.github.io/bodyglove-coming-soon/">
+      <div class="card-icon" style="background: rgba(255,214,0,0.12); color: #c4a600;">BG</div>
+      <div class="card-text">
+        <h2>Body Glove — Coming Soon</h2>
+        <p>8 outdoor games &amp; sports products</p>
+      </div>
+      <div class="card-arrow">&rsaquo;</div>
+    </a>
+  </div>
+  <div class="footer">Password protected</div>
+</div>
+</body>
+</html>
