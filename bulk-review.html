@@ -45,17 +45,22 @@
   .actual-chip { margin-left:auto; font-family:var(--mono); font-size:12px; color:var(--text); background:rgba(72,213,151,0.12); padding:4px 10px; border-radius:5px; border:1px solid rgba(72,213,151,0.3); }
 
   .preds { display:flex; flex-direction:column; gap:6px; margin:10px 0; }
-  .pred { display:flex; align-items:center; gap:10px; padding:6px 10px; background:var(--panel-2); border-radius:6px; font-size:12.5px; }
-  .pred.correct { background:rgba(72,213,151,0.10); }
-  .pred.wrong { background:rgba(224,90,90,0.08); }
-  .pred.non-agg { opacity:0.65; }
+  .pred { display:flex; flex-direction:column; gap:0; padding:8px 10px; background:var(--panel-2); border-radius:6px; font-size:12.5px; }
+  .pred.correct { background:rgba(72,213,151,0.10); border-left:2px solid var(--best); padding-left:8px; }
+  .pred.wrong { background:rgba(224,90,90,0.08); border-left:2px solid var(--worst); padding-left:8px; }
+  .pred.non-agg { opacity:0.75; }
+  .pred-head { display:flex; align-items:center; gap:10px; }
   .pred-badge { font-size:13px; }
-  .pred-src { font-family:var(--mono); font-weight:600; min-width:120px; color:var(--text); }
+  .pred-src { font-family:var(--mono); font-weight:600; min-width:140px; color:var(--text); }
   .pred-src .agg-tag { background:var(--panel-3); color:var(--text-dim); font-size:9.5px; padding:1px 5px; border-radius:3px; margin-left:6px; letter-spacing:0.05em; text-transform:uppercase; vertical-align:1px; }
   .pred-src.non-agg-lab .agg-tag { background:transparent; color:var(--text-mute); }
   .pred-bulk { flex:1; font-family:var(--mono); color:var(--text); }
-  .pred-link { color:var(--accent); text-decoration:none; font-size:11.5px; font-family:var(--mono); }
+  .pred-links { display:flex; gap:10px; align-items:center; }
+  .pred-link { color:var(--accent); text-decoration:none; font-size:11.5px; font-family:var(--mono); white-space:nowrap; }
   .pred-link:hover { text-decoration:underline; }
+  .pred-link.ours { color:var(--warn); }
+  .pred-text { margin-top:6px; padding:6px 10px; background:var(--panel-3); border-radius:5px; color:var(--text-dim); font:400 12px/1.45 var(--sans); white-space:pre-wrap; word-break:break-word; }
+  .pred-text a { color:var(--accent); }
 
   .verdicts { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; align-items:center; }
   .verdicts .v-lab { color:var(--text-mute); font-size:11px; margin-right:6px; letter-spacing:0.06em; text-transform:uppercase; font-family:var(--mono); }
@@ -186,14 +191,28 @@ function renderGame(g) {
   const preds = g.preds.map(p => {
     const badge = p.bulk_ok ? "✅" : "❌";
     const cls = (p.bulk_ok ? "correct" : "wrong") + (p.is_aggregator ? "" : " non-agg");
-    const link = p.tweet_url ? `<a class="pred-link" href="${escapeAttr(p.tweet_url)}" target="_blank">tweet ↗</a>` : "";
+    const srcLink   = p.tweet_url ? `<a class="pred-link" href="${escapeAttr(p.tweet_url)}" target="_blank">${escapeHtml(p.source.replace(/^@/, ""))} tweet ↗</a>` : "";
+    const ourLink   = p.our_tweet_url ? `<a class="pred-link ours" href="${escapeAttr(p.our_tweet_url)}" target="_blank">our repost ↗</a>` : "";
     const srcCls = p.is_aggregator ? "" : "non-agg-lab";
     const aggTag = p.is_aggregator ? `<span class="agg-tag">agg</span>` : `<span class="agg-tag">rep</span>`;
-    return `<div class="pred ${cls}"><span class="pred-badge">${badge}</span>
-      <span class="pred-src ${srcCls}">${escapeHtml(p.source)}${aggTag}</span>
-      <span class="pred-bulk">${escapeHtml(p.bulk)}</span>
-      ${link}
+    const text   = p.tweet_text ? `<div class="pred-text">${linkifyText(p.tweet_text)}</div>` : "";
+    return `<div class="pred ${cls}">
+      <div class="pred-head">
+        <span class="pred-badge">${badge}</span>
+        <span class="pred-src ${srcCls}">${escapeHtml(p.source)}${aggTag}</span>
+        <span class="pred-bulk">${escapeHtml(p.bulk)}</span>
+        <div class="pred-links">${srcLink}${ourLink}</div>
+      </div>
+      ${text}
     </div>`;
+  }).join("");
+
+  // Dynamic verdict buttons: one "trust @X right" per aggregator that predicted THIS game.
+  const aggPreds = g.preds.filter(p => p.is_aggregator);
+  const uniqAggHandles = [...new Set(aggPreds.map(p => p.source.replace(/^@/, "")))];
+  const trustButtons = uniqAggHandles.map(h => {
+    const v = `trust_${h}`;
+    return `<button class="vbtn ${verdict===v?'on':''}" data-key="${key}" data-verdict="${v}">@${h} was right</button>`;
   }).join("");
 
   const vb = (v, label, extraCls="") =>
@@ -210,12 +229,11 @@ function renderGame(g) {
     <div class="preds">${preds}</div>
     <div class="verdicts">
       <span class="v-lab">Verdict:</span>
-      ${vb("trust_bulkbot",  "@BulkBot got it right")}
-      ${vb("trust_bulk_guy", "@bulk_guy got it right")}
-      ${vb("both_right",     "Both aggregators right")}
-      ${vb("both_wrong",     "Both aggregators wrong (someone else nailed it)")}
+      ${trustButtons}
+      ${vb("all_agg_right",  "All aggregators right")}
+      ${vb("all_agg_wrong",  "All aggregators wrong")}
       ${vb("unpredictable",  "🎲 Unpredictable", "hard")}
-      ${vb("other",          "Notes-only",       "other")}
+      ${vb("notes",          "Notes-only",       "other")}
       ${verdict ? `<button class="vbtn clear" data-key="${key}" data-verdict="__clear">clear</button>` : ""}
       <input class="note-input" data-key="${key}" placeholder="Optional note…" value="${escapeAttr(note)}" />
     </div>
@@ -286,6 +304,17 @@ function toast(msg, err=false) {
 
 function escapeHtml(s) { return String(s ?? "").replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]); }
 function escapeAttr(s) { return escapeHtml(s).replace(/'/g, "&#39;"); }
+function linkifyText(s) {
+  // Handles the "[label](<url>)" markdown links our tweet_text uses (hashtags),
+  // plain URLs, and @handles.
+  let out = escapeHtml(s);
+  out = out.replace(/\[([^\]]+)\]\(&lt;(https?:\/\/[^ &]+)&gt;\)/g,
+    (_, lab, url) => `<a href="${url.replace(/&amp;/g,'&')}" target="_blank">${lab}</a>`);
+  out = out.replace(/(https?:\/\/[^\s<]+)/g, url => `<a href="${url.replace(/&amp;/g,'&')}" target="_blank">${url}</a>`);
+  out = out.replace(/(^|\s)(@[A-Za-z0-9_]{1,15})/g, (_, pre, at) =>
+    `${pre}<a href="https://x.com/${at.slice(1)}" target="_blank">${at}</a>`);
+  return out;
+}
 
 // Bind toolbar
 el("#days").addEventListener("change", e => { state.days = parseInt(e.target.value); load(); });
