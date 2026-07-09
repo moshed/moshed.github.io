@@ -1,0 +1,296 @@
+<title>Bulk-Comp Review</title>
+<style>
+  :root {
+    --bg:#0e0f13; --panel:#171a21; --panel-2:#1e222b; --panel-3:#262b36;
+    --border:#2a2f3a; --border-soft:#20242e;
+    --text:#e8ebf1; --text-dim:#a4abbb; --text-mute:#6d7488;
+    --accent:#4d8dff; --best:#48d597; --worst:#e05a5a; --warn:#ffb44a;
+    --mono:"SF Mono", ui-monospace, Menlo, monospace;
+    --sans:-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font:14px/1.5 var(--sans); margin:0; padding:0 24px 40px; -webkit-font-smoothing:antialiased; }
+  h1 { font:700 22px/1.3 var(--sans); margin:24px 0 6px; }
+  .subtitle { color:var(--text-dim); font-size:13px; margin-bottom:20px; }
+  .toolbar { display:flex; align-items:center; gap:12px; margin:16px 0; flex-wrap:wrap; background:var(--panel); padding:12px 14px; border-radius:10px; border:1px solid var(--border); }
+  .toolbar label { color:var(--text-dim); font-size:12px; display:inline-flex; align-items:center; gap:6px; }
+  .toolbar select, .toolbar input { background:var(--panel-2); border:1px solid var(--border-soft); color:var(--text); font:600 12px/1 var(--mono); padding:6px 10px; border-radius:5px; }
+  .toolbar .spacer { flex:1; }
+  .stat-pill { background:var(--panel-2); padding:6px 12px; border-radius:20px; font:600 11.5px/1 var(--mono); color:var(--text-dim); display:inline-flex; gap:6px; align-items:center; }
+  .stat-pill b { color:var(--text); }
+
+  .leaderboard { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:16px 18px; margin-bottom:24px; }
+  .leaderboard h3 { margin:0 0 10px; font:700 13px/1 var(--sans); color:var(--text-dim); letter-spacing:0.06em; text-transform:uppercase; }
+  .lb-row { display:flex; align-items:center; padding:8px 0; border-bottom:1px solid var(--border-soft); font-family:var(--mono); font-size:13px; }
+  .lb-row:last-child { border-bottom:none; }
+  .lb-src { flex:1; color:var(--text); font-weight:600; }
+  .lb-src.us { color:var(--accent); }
+  .lb-n { color:var(--text-mute); margin:0 12px; font-size:11.5px; min-width:60px; text-align:right; }
+  .lb-bar { flex:2; height:8px; background:var(--panel-3); border-radius:4px; overflow:hidden; margin:0 12px; max-width:220px; }
+  .lb-bar-fill { height:100%; background:var(--accent); }
+  .lb-row.us .lb-bar-fill { background:var(--warn); }
+  .lb-pct { min-width:48px; text-align:right; font-weight:700; color:var(--text); }
+
+  .games-hd { display:flex; align-items:baseline; gap:10px; margin:20px 0 10px; }
+  .games-hd h3 { margin:0; font:700 15px/1.3 var(--sans); }
+  .games-hd .count { color:var(--text-mute); font-family:var(--mono); font-size:12px; }
+
+  .game { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:12px; }
+  .game.reviewed { border-left:3px solid var(--best); }
+  .game.reviewed-hard { border-left:3px solid var(--warn); }
+  .game-head { display:flex; align-items:center; gap:12px; margin-bottom:10px; flex-wrap:wrap; }
+  .game-title { font:700 14px/1.2 var(--sans); color:var(--text); }
+  .game-team { font-family:var(--mono); background:var(--panel-2); padding:3px 8px; border-radius:5px; font-size:12px; color:var(--text-dim); }
+  .game-date { color:var(--text-mute); font-family:var(--mono); font-size:12px; }
+  .actual-chip { margin-left:auto; font-family:var(--mono); font-size:12px; color:var(--text); background:rgba(72,213,151,0.12); padding:4px 10px; border-radius:5px; border:1px solid rgba(72,213,151,0.3); }
+
+  .preds { display:flex; flex-direction:column; gap:6px; margin:10px 0; }
+  .pred { display:flex; align-items:center; gap:10px; padding:6px 10px; background:var(--panel-2); border-radius:6px; font-size:12.5px; }
+  .pred.correct { background:rgba(72,213,151,0.10); }
+  .pred.wrong { background:rgba(224,90,90,0.08); }
+  .pred.non-agg { opacity:0.65; }
+  .pred-badge { font-size:13px; }
+  .pred-src { font-family:var(--mono); font-weight:600; min-width:120px; color:var(--text); }
+  .pred-src .agg-tag { background:var(--panel-3); color:var(--text-dim); font-size:9.5px; padding:1px 5px; border-radius:3px; margin-left:6px; letter-spacing:0.05em; text-transform:uppercase; vertical-align:1px; }
+  .pred-src.non-agg-lab .agg-tag { background:transparent; color:var(--text-mute); }
+  .pred-bulk { flex:1; font-family:var(--mono); color:var(--text); }
+  .pred-link { color:var(--accent); text-decoration:none; font-size:11.5px; font-family:var(--mono); }
+  .pred-link:hover { text-decoration:underline; }
+
+  .verdicts { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; align-items:center; }
+  .verdicts .v-lab { color:var(--text-mute); font-size:11px; margin-right:6px; letter-spacing:0.06em; text-transform:uppercase; font-family:var(--mono); }
+  .vbtn { background:var(--panel-2); border:1px solid var(--border-soft); color:var(--text-dim); font:600 11.5px/1 var(--sans); padding:6px 11px; border-radius:6px; cursor:pointer; }
+  .vbtn:hover { background:var(--panel-3); color:var(--text); }
+  .vbtn.on { background:var(--accent); border-color:var(--accent); color:#0e1218; }
+  .vbtn.on.hard { background:var(--warn); border-color:var(--warn); }
+  .vbtn.on.other { background:var(--text-dim); border-color:var(--text-dim); color:#0e1218; }
+  .vbtn.clear { color:var(--text-mute); font-weight:500; }
+  .note-input { flex:1; min-width:120px; background:var(--panel-2); border:1px solid var(--border-soft); color:var(--text); font:400 12px/1.3 var(--sans); padding:6px 10px; border-radius:5px; }
+  .review-meta { font-size:11px; color:var(--text-mute); font-family:var(--mono); margin-top:8px; }
+  .review-meta b { color:var(--best); }
+
+  .empty { padding:40px; text-align:center; color:var(--text-mute); }
+  .loading { padding:40px; text-align:center; color:var(--text-mute); font-family:var(--mono); }
+  .error { padding:16px; background:rgba(224,90,90,0.12); border:1px solid var(--worst); border-radius:8px; color:var(--worst); margin:16px 0; font-family:var(--mono); font-size:12px; }
+  .toast { position:fixed; bottom:20px; right:20px; background:var(--panel); border:1px solid var(--best); color:var(--best); padding:10px 16px; border-radius:8px; font-family:var(--mono); font-size:12px; opacity:0; transition:opacity 0.15s; pointer-events:none; z-index:100; }
+  .toast.show { opacity:1; }
+</style>
+
+<h1>Bulk-Comp Review</h1>
+<div class="subtitle">Aggregators only: <b>@BulkBot</b> · <b>@bulk_guy</b> · and our @MLBBulkbot aggregate. Click a verdict — it saves to Supabase and I can read it back.</div>
+
+<div class="toolbar">
+  <label>Window <select id="days">
+    <option value="14">14 days</option>
+    <option value="30" selected>30 days</option>
+    <option value="60">60 days</option>
+    <option value="90">90 days</option>
+  </select></label>
+  <label>Show <select id="filter">
+    <option value="all">All games</option>
+    <option value="disputed" selected>Only disputed / interesting</option>
+    <option value="unreviewed">Not yet reviewed</option>
+    <option value="reviewed">Reviewed</option>
+  </select></label>
+  <label>Sort <select id="sort">
+    <option value="date">Newest first</option>
+    <option value="team">By team</option>
+  </select></label>
+  <div class="spacer"></div>
+  <div class="stat-pill">Games <b id="stat-games">—</b></div>
+  <div class="stat-pill">Reviewed <b id="stat-reviewed">—</b></div>
+</div>
+
+<div class="leaderboard" id="leaderboard"></div>
+
+<div class="games-hd"><h3>Games</h3><span class="count" id="games-count"></span></div>
+<div id="games"><div class="loading">Loading…</div></div>
+
+<div class="toast" id="toast">Saved ✓</div>
+
+<script>
+const SUPABASE_URL  = "https://mitagjionpweuscjncih.supabase.co";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1pdGFnamlvbnB3ZXVzY2puY2loIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NjY1ODAsImV4cCI6MjA4NjQ0MjU4MH0.CFUkcwdKk9zC1Puh2TiL08sjteRE3r-z9c5Ex_V-87w";
+
+const state = { days:30, filter:"disputed", sort:"date", data:null, saving:new Set() };
+const el = s => document.querySelector(s);
+
+async function load() {
+  el("#games").innerHTML = '<div class="loading">Loading…</div>';
+  el("#leaderboard").innerHTML = "";
+  try {
+    const r = await fetch(`${SUPABASE_URL}/functions/v1/bulk-comp`, {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ days: state.days, mode:"data", post:false }),
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || "unknown");
+    state.data = j;
+    render();
+  } catch (e) {
+    el("#games").innerHTML = `<div class="error">Load failed: ${e.message}</div>`;
+  }
+}
+
+function renderLeaderboard() {
+  const lb = state.data.leaderboard;
+  const rows = lb.map(r => {
+    const isUs = r.src.includes("MLBBulkbot");
+    return `<div class="lb-row ${isUs?'us':''}">
+      <div class="lb-src ${isUs?'us':''}">${escapeHtml(r.src)}</div>
+      <div class="lb-n">${r.bk}/${r.n}</div>
+      <div class="lb-bar"><div class="lb-bar-fill" style="width:${(r.bk_pct*100).toFixed(0)}%"></div></div>
+      <div class="lb-pct">${(r.bk_pct*100).toFixed(0)}%</div>
+    </div>`;
+  }).join("");
+  el("#leaderboard").innerHTML = `<h3>Bulk accuracy — aggregators only</h3>${rows}`;
+}
+
+function passesFilter(g) {
+  const reviewed = !!g.review;
+  const aggPreds = g.preds.filter(p => p.is_aggregator);
+  const anyAggWrong = aggPreds.some(p => !p.bulk_ok);
+  const anyAggRight = aggPreds.some(p => p.bulk_ok);
+  const disputed = anyAggWrong || (aggPreds.length >= 2 && !aggPreds.every(p => p.bulk === aggPreds[0].bulk));
+  if (state.filter === "unreviewed") return !reviewed;
+  if (state.filter === "reviewed")   return reviewed;
+  if (state.filter === "disputed")   return disputed;
+  return true;
+}
+
+function render() {
+  renderLeaderboard();
+  const games = state.data.games.filter(passesFilter);
+  if (state.sort === "team") games.sort((a,b) => a.team.localeCompare(b.team) || b.date.localeCompare(a.date));
+  else games.sort((a,b) => b.date.localeCompare(a.date));
+
+  el("#stat-games").textContent = state.data.games.length;
+  el("#stat-reviewed").textContent = state.data.games.filter(g => g.review).length;
+  el("#games-count").textContent = `${games.length} shown`;
+
+  if (games.length === 0) {
+    el("#games").innerHTML = '<div class="empty">No games match the current filter.</div>';
+    return;
+  }
+  el("#games").innerHTML = games.map(renderGame).join("");
+  bindVerdicts();
+}
+
+function renderGame(g) {
+  const key = `${g.team}|${g.date}`;
+  const verdict = g.review?.verdict;
+  const note = g.review?.note || "";
+  const cardCls = verdict ? (verdict === "unpredictable" ? "reviewed-hard" : "reviewed") : "";
+
+  const preds = g.preds.map(p => {
+    const badge = p.bulk_ok ? "✅" : "❌";
+    const cls = (p.bulk_ok ? "correct" : "wrong") + (p.is_aggregator ? "" : " non-agg");
+    const link = p.tweet_url ? `<a class="pred-link" href="${escapeAttr(p.tweet_url)}" target="_blank">tweet ↗</a>` : "";
+    const srcCls = p.is_aggregator ? "" : "non-agg-lab";
+    const aggTag = p.is_aggregator ? `<span class="agg-tag">agg</span>` : `<span class="agg-tag">rep</span>`;
+    return `<div class="pred ${cls}"><span class="pred-badge">${badge}</span>
+      <span class="pred-src ${srcCls}">${escapeHtml(p.source)}${aggTag}</span>
+      <span class="pred-bulk">${escapeHtml(p.bulk)}</span>
+      ${link}
+    </div>`;
+  }).join("");
+
+  const vb = (v, label, extraCls="") =>
+    `<button class="vbtn ${extraCls} ${verdict===v?'on '+extraCls:''}" data-key="${key}" data-verdict="${v}">${label}</button>`;
+
+  const meta = g.review ? `<div class="review-meta">✓ Saved <b>${escapeHtml(verdict)}</b> · ${new Date(g.review.updated_at).toLocaleString()}</div>` : "";
+
+  return `<div class="game ${cardCls}" data-key="${key}">
+    <div class="game-head">
+      <div class="game-team">${escapeHtml(g.team)}</div>
+      <div class="game-date">${escapeHtml(g.date)}</div>
+      <div class="actual-chip">actual bulk: <b>${escapeHtml(g.actual_bulk || '—')}</b></div>
+    </div>
+    <div class="preds">${preds}</div>
+    <div class="verdicts">
+      <span class="v-lab">Verdict:</span>
+      ${vb("trust_bulkbot",  "@BulkBot got it right")}
+      ${vb("trust_bulk_guy", "@bulk_guy got it right")}
+      ${vb("both_right",     "Both aggregators right")}
+      ${vb("both_wrong",     "Both aggregators wrong (someone else nailed it)")}
+      ${vb("unpredictable",  "🎲 Unpredictable", "hard")}
+      ${vb("other",          "Notes-only",       "other")}
+      ${verdict ? `<button class="vbtn clear" data-key="${key}" data-verdict="__clear">clear</button>` : ""}
+      <input class="note-input" data-key="${key}" placeholder="Optional note…" value="${escapeAttr(note)}" />
+    </div>
+    ${meta}
+  </div>`;
+}
+
+function bindVerdicts() {
+  document.querySelectorAll(".vbtn").forEach(b => {
+    b.addEventListener("click", async () => {
+      const key = b.getAttribute("data-key");
+      const verdict = b.getAttribute("data-verdict");
+      const noteInput = document.querySelector(`.note-input[data-key="${CSS.escape(key)}"]`);
+      const note = noteInput ? noteInput.value.trim() : "";
+      await save(key, verdict === "__clear" ? null : verdict, note);
+    });
+  });
+  document.querySelectorAll(".note-input").forEach(inp => {
+    inp.addEventListener("blur", async () => {
+      const key = inp.getAttribute("data-key");
+      const game = state.data.games.find(g => `${g.team}|${g.date}` === key);
+      const existing = game?.review?.verdict || null;
+      // Save note without changing verdict.
+      await save(key, existing, inp.value.trim(), true);
+    });
+  });
+}
+
+async function save(key, verdict, note, silent=false) {
+  if (state.saving.has(key)) return;
+  state.saving.add(key);
+  const [team, game_date] = key.split("|");
+  const game = state.data.games.find(g => g.team === team && g.date === game_date);
+  const actual_bulk = game?.actual_bulk || null;
+  try {
+    // Upsert on (team, game_date)
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/bulk_comp_review?on_conflict=team,game_date`, {
+      method:"POST",
+      headers:{
+        "apikey": SUPABASE_ANON,
+        "Authorization": `Bearer ${SUPABASE_ANON}`,
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates,return=representation",
+      },
+      body: JSON.stringify([{ team, game_date, actual_bulk, verdict, note, updated_at: new Date().toISOString() }]),
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status} ${await r.text()}`);
+    const rows = await r.json();
+    if (game) game.review = rows[0] || { team, game_date, verdict, note, updated_at: new Date().toISOString() };
+    if (!silent) toast(verdict ? `Saved: ${verdict}` : "Cleared");
+    render();
+  } catch (e) {
+    toast(`Save failed: ${e.message}`, true);
+  } finally {
+    state.saving.delete(key);
+  }
+}
+
+function toast(msg, err=false) {
+  const t = el("#toast");
+  t.textContent = msg;
+  t.style.borderColor = err ? "var(--worst)" : "var(--best)";
+  t.style.color = err ? "var(--worst)" : "var(--best)";
+  t.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove("show"), 1600);
+}
+
+function escapeHtml(s) { return String(s ?? "").replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]); }
+function escapeAttr(s) { return escapeHtml(s).replace(/'/g, "&#39;"); }
+
+// Bind toolbar
+el("#days").addEventListener("change", e => { state.days = parseInt(e.target.value); load(); });
+el("#filter").addEventListener("change", e => { state.filter = e.target.value; render(); });
+el("#sort").addEventListener("change", e => { state.sort = e.target.value; render(); });
+
+load();
+</script>
