@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seeding Chart</title>
+<style>
+  :root {
+    --bg:#0e0f13; --panel:#171a21; --panel-2:#1e222b; --panel-3:#262b36;
+    --border:#2a2f3a; --border-soft:#20242e;
+    --text:#e8ebf1; --text-dim:#a4abbb; --text-mute:#6d7488;
+    --accent:#4d8dff; --good:#48d597; --bad:#e05a5a; --warn:#ffb44a;
+    --mono:"SF Mono", ui-monospace, Menlo, monospace;
+    --sans:-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing:border-box; }
+  html, body { height:100%; }
+  body { background:var(--bg); color:var(--text); font:14px/1.5 var(--sans); margin:0; -webkit-font-smoothing:antialiased; overflow:hidden; }
+
+  .app { display:flex; flex-direction:column; height:100vh; }
+
+  header.top { padding:14px 20px 12px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  header.top h1 { font:800 20px/1.2 var(--sans); margin:0; letter-spacing:-0.01em; }
+  header.top .sub { color:var(--text-mute); font-size:12px; }
+  .grow { flex:1; }
+
+  .btn { background:var(--panel-2); border:1px solid var(--border); color:var(--text); font:600 12.5px/1 var(--sans); padding:8px 12px; border-radius:7px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+  .btn:hover { background:var(--panel-3); }
+  .btn.primary { background:var(--accent); border-color:var(--accent); color:#0b1017; }
+  .btn.primary:hover { filter:brightness(1.08); }
+  .btn.ghost { background:transparent; }
+  .btn.danger:hover { border-color:var(--bad); color:var(--bad); }
+  .btn svg { width:15px; height:15px; }
+
+  .stats { display:flex; gap:8px; flex-wrap:wrap; }
+  .pill { background:var(--panel-2); padding:6px 11px; border-radius:20px; font:600 11.5px/1 var(--mono); color:var(--text-dim); }
+  .pill b { color:var(--text); }
+  .pill.warn b { color:var(--warn); }
+
+  .body { display:flex; flex:1; min-height:0; }
+
+  /* Sidebar / pool */
+  .sidebar { width:280px; flex-shrink:0; border-right:1px solid var(--border); display:flex; flex-direction:column; min-height:0; background:var(--panel); }
+  .sidebar .sb-head { padding:14px 16px 10px; }
+  .sidebar h2 { font:700 12px/1 var(--sans); text-transform:uppercase; letter-spacing:0.07em; color:var(--text-dim); margin:0 0 10px; display:flex; align-items:center; gap:8px; }
+  .sidebar h2 .n { background:var(--panel-3); color:var(--text-dim); border-radius:10px; padding:2px 8px; font:700 11px/1 var(--mono); }
+  .add-row { display:flex; gap:6px; }
+  .add-row input { flex:1; background:var(--panel-2); border:1px solid var(--border-soft); color:var(--text); font:400 13px/1 var(--sans); padding:8px 10px; border-radius:6px; min-width:0; }
+  .add-row input:focus { outline:none; border-color:var(--accent); }
+  .add-row .btn { padding:8px 11px; }
+  .pool-scroll { flex:1; overflow-y:auto; padding:6px 12px 16px; }
+  .pool-tools { display:flex; gap:8px; padding:0 16px 10px; }
+  .pool-tools .link { color:var(--text-mute); font:600 11px/1 var(--sans); cursor:pointer; background:none; border:none; padding:0; }
+  .pool-tools .link:hover { color:var(--accent); }
+
+  /* Tables area */
+  .tables-wrap { flex:1; overflow:auto; padding:18px 20px 40px; }
+  .tables-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:16px; align-items:start; }
+
+  .table-card { background:var(--panel); border:1px solid var(--border); border-radius:12px; display:flex; flex-direction:column; min-height:120px; }
+  .table-card.over { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+  .table-card.full .cap { color:var(--warn); }
+  .table-card.over-cap .cap { color:var(--bad); }
+  .tc-head { display:flex; align-items:center; gap:8px; padding:11px 12px 8px; border-bottom:1px solid var(--border-soft); }
+  .tc-name { flex:1; background:transparent; border:1px solid transparent; color:var(--text); font:700 14px/1.2 var(--sans); padding:4px 6px; border-radius:5px; margin:-4px -6px; min-width:0; }
+  .tc-name:hover { background:var(--panel-2); }
+  .tc-name:focus { outline:none; background:var(--panel-2); border-color:var(--accent); }
+  .cap { font:600 11px/1 var(--mono); color:var(--text-mute); white-space:nowrap; }
+  .tc-menu { position:relative; }
+  .tc-menu-btn { background:none; border:none; color:var(--text-mute); cursor:pointer; padding:4px; border-radius:5px; line-height:0; }
+  .tc-menu-btn:hover { background:var(--panel-2); color:var(--text); }
+  .menu-pop { position:absolute; right:0; top:26px; background:var(--panel-3); border:1px solid var(--border); border-radius:8px; padding:5px; z-index:30; min-width:150px; box-shadow:0 8px 24px rgba(0,0,0,0.4); }
+  .menu-pop button { display:flex; align-items:center; gap:8px; width:100%; background:none; border:none; color:var(--text-dim); font:500 12.5px/1 var(--sans); padding:8px 9px; border-radius:5px; cursor:pointer; text-align:left; }
+  .menu-pop button:hover { background:var(--panel-2); color:var(--text); }
+  .menu-pop button.danger:hover { color:var(--bad); }
+
+  .seats { list-style:none; margin:0; padding:8px; display:flex; flex-direction:column; gap:5px; flex:1; min-height:44px; }
+  .seats.empty-hint::after { content:"Drag guests here"; display:block; color:var(--text-mute); font-size:11.5px; text-align:center; padding:12px 4px; font-style:italic; }
+
+  .chip { display:flex; align-items:center; gap:8px; background:var(--panel-2); border:1px solid var(--border-soft); border-radius:7px; padding:7px 9px; font:500 13px/1.2 var(--sans); cursor:grab; user-select:none; touch-action:none; }
+  .chip:hover { border-color:var(--border); }
+  .chip .seatno { font:700 10px/1 var(--mono); color:var(--text-mute); background:var(--panel-3); border-radius:4px; padding:3px 5px; min-width:20px; text-align:center; }
+  .chip .nm { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .chip .del { opacity:0; background:none; border:none; color:var(--text-mute); cursor:pointer; padding:2px; line-height:0; border-radius:4px; flex-shrink:0; }
+  .chip:hover .del { opacity:1; }
+  .chip .del:hover { color:var(--bad); background:var(--panel-3); }
+  .chip.dragging { opacity:0.35; }
+  .chip.ghost { position:fixed; z-index:1000; pointer-events:none; box-shadow:0 12px 30px rgba(0,0,0,0.5); border-color:var(--accent); background:var(--panel-3); margin:0; }
+
+  .placeholder { border:1.5px dashed var(--accent); border-radius:7px; height:34px; background:rgba(77,141,255,0.08); }
+
+  .pool-scroll .seats { padding:0; gap:5px; }
+
+  /* Modal */
+  .overlay { position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:200; padding:20px; }
+  .overlay.show { display:flex; }
+  .modal { background:var(--panel); border:1px solid var(--border); border-radius:14px; width:100%; max-width:460px; padding:20px 22px; max-height:88vh; overflow:auto; }
+  .modal h3 { margin:0 0 4px; font:800 17px/1.2 var(--sans); }
+  .modal p.hint { color:var(--text-mute); font-size:12.5px; margin:0 0 14px; }
+  .modal textarea { width:100%; min-height:180px; background:var(--panel-2); border:1px solid var(--border-soft); color:var(--text); font:400 13px/1.5 var(--mono); padding:10px 12px; border-radius:8px; resize:vertical; }
+  .modal textarea:focus { outline:none; border-color:var(--accent); }
+  .modal .row { display:flex; gap:10px; align-items:center; margin:14px 0 4px; flex-wrap:wrap; }
+  .modal label { font-size:12.5px; color:var(--text-dim); display:inline-flex; align-items:center; gap:7px; }
+  .modal input[type=number], .modal input[type=text] { background:var(--panel-2); border:1px solid var(--border-soft); color:var(--text); font:600 13px/1 var(--mono); padding:7px 9px; border-radius:6px; width:70px; }
+  .modal .actions { display:flex; justify-content:flex-end; gap:8px; margin-top:18px; }
+
+  .empty-board { text-align:center; color:var(--text-mute); padding:60px 20px; }
+  .empty-board svg { width:40px; height:40px; opacity:0.4; margin-bottom:12px; }
+
+  .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(10px); background:var(--panel-3); border:1px solid var(--good); color:var(--good); padding:10px 18px; border-radius:9px; font:600 12.5px/1 var(--mono); opacity:0; transition:all 0.2s; pointer-events:none; z-index:300; }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+  ::-webkit-scrollbar { width:10px; height:10px; }
+  ::-webkit-scrollbar-thumb { background:var(--panel-3); border-radius:6px; border:2px solid var(--bg); }
+  ::-webkit-scrollbar-thumb:hover { background:var(--border); }
+
+  @media (max-width:720px) {
+    .sidebar { width:220px; }
+    header.top h1 { font-size:17px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div>
+      <h1>Seeding Chart</h1>
+      <div class="sub" id="evtName">Untitled event</div>
+    </div>
+    <div class="grow"></div>
+    <div class="stats" id="stats"></div>
+    <div class="grow"></div>
+    <button class="btn" id="btnAddTable">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+      Add table
+    </button>
+    <button class="btn" id="btnBulk">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      Paste guests
+    </button>
+    <button class="btn primary" id="btnExport">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+      Export Excel
+    </button>
+    <div class="tc-menu">
+      <button class="btn ghost" id="btnMore" title="More">
+        <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+      </button>
+      <div class="menu-pop" id="morePop" style="display:none; top:40px;">
+        <button id="btnCsv">Export CSV</button>
+        <button id="btnPrint">Print / PDF</button>
+        <button id="btnRename">Rename event</button>
+        <button id="btnSaveJson">Save backup (.json)</button>
+        <button id="btnLoadJson">Load backup (.json)</button>
+        <button class="danger" id="btnReset">Reset everything</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="body">
+    <aside class="sidebar">
+      <div class="sb-head">
+        <h2>Unassigned <span class="n" id="poolCount">0</span></h2>
+        <div class="add-row">
+          <input id="guestInput" placeholder="Add a guest…" autocomplete="off">
+          <button class="btn primary" id="btnAddGuest">Add</button>
+        </div>
+      </div>
+      <div class="pool-tools">
+        <button class="link" id="sortPool">Sort A–Z</button>
+        <button class="link" id="clearPool">Clear unassigned</button>
+      </div>
+      <div class="pool-scroll">
+        <ul class="seats dropzone" id="pool" data-container="pool"></ul>
+      </div>
+    </aside>
+
+    <main class="tables-wrap">
+      <div class="tables-grid" id="tables"></div>
+      <div class="empty-board" id="emptyBoard" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
+        <div>No tables yet. Click <b>Add table</b> to start, then drag guests in.</div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- Bulk add modal -->
+<div class="overlay" id="bulkOverlay">
+  <div class="modal">
+    <h3>Paste guest list</h3>
+    <p class="hint">One name per line. Commas or tabs also work (e.g. from a spreadsheet). Duplicates are skipped.</p>
+    <textarea id="bulkText" placeholder="Jane Cohen&#10;David Levi&#10;Sarah &amp; Michael Katz&#10;…"></textarea>
+    <div class="actions">
+      <button class="btn ghost" data-close>Cancel</button>
+      <button class="btn primary" id="bulkAdd">Add guests</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add table modal -->
+<div class="overlay" id="tableOverlay">
+  <div class="modal">
+    <h3>Add tables</h3>
+    <p class="hint">Create one or several tables at once.</p>
+    <div class="row">
+      <label>How many tables <input type="number" id="numTables" value="1" min="1" max="100"></label>
+      <label>Seats each <input type="number" id="capTables" value="10" min="1" max="40"></label>
+    </div>
+    <div class="row">
+      <label style="width:100%">Name prefix <input type="text" id="prefixTables" value="Table" style="width:auto; flex:1"></label>
+    </div>
+    <div class="actions">
+      <button class="btn ghost" data-close>Cancel</button>
+      <button class="btn primary" id="tableAdd">Add</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept="application/json,.json" style="display:none">
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------- State ---------- */
+const LS_KEY = "seedingChart.v1";
+let state = load() || defaultState();
+
+function defaultState() {
+  return { event:"Untitled event", tables:[], containers:{ pool:[] }, guests:{}, seq:1 };
+}
+function load() {
+  try { const s = JSON.parse(localStorage.getItem(LS_KEY)); if (s && s.containers) return s; } catch(e){}
+  return null;
+}
+function save() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch(e){}
+}
+function uid(p){ return p + (state.seq++); }
+
+/* ---------- Guest / table ops ---------- */
+function addGuest(name) {
+  name = (name||"").trim();
+  if (!name) return null;
+  const exists = Object.values(state.guests).some(g => g.name.toLowerCase() === name.toLowerCase());
+  if (exists) return null;
+  const id = uid("g");
+  state.guests[id] = { id, name };
+  state.containers.pool.push(id);
+  return id;
+}
+function addGuestsBulk(text) {
+  const parts = text.split(/[\n,\t]+/).map(s => s.trim()).filter(Boolean);
+  let added = 0;
+  parts.forEach(n => { if (addGuest(n)) added++; });
+  return added;
+}
+function deleteGuest(id) {
+  for (const k in state.containers) {
+    const i = state.containers[k].indexOf(id);
+    if (i >= 0) state.containers[k].splice(i, 1);
+  }
+  delete state.guests[id];
+}
+function containerOf(id) {
+  for (const k in state.containers) if (state.containers[k].includes(id)) return k;
+  return null;
+}
+function addTables(count, cap, prefix) {
+  const start = state.tables.length + 1;
+  for (let i = 0; i < count; i++) {
+    const id = uid("t");
+    state.tables.push({ id, name: `${prefix} ${start + i}`, cap: cap });
+    state.containers[id] = [];
+  }
+}
+function deleteTable(id) {
+  // move its guests back to pool
+  (state.containers[id] || []).forEach(gid => state.containers.pool.push(gid));
+  delete state.containers[id];
+  state.tables = state.tables.filter(t => t.id !== id);
+}
+function clearTable(id) {
+  (state.containers[id] || []).slice().forEach(gid => {
+    const i = state.containers[id].indexOf(gid);
+    state.containers[id].splice(i, 1);
+    state.containers.pool.push(gid);
+  });
+}
+function moveGuest(gid, toContainer, index) {
+  const from = containerOf(gid);
+  if (from == null) return;
+  const fi = state.containers[from].indexOf(gid);
+  state.containers[from].splice(fi, 1);
+  if (from === toContainer && fi < index) index--;
+  const arr = state.containers[toContainer];
+  index = Math.max(0, Math.min(index, arr.length));
+  arr.splice(index, 0, gid);
+}
+
+/* ---------- Rendering ---------- */
+const el = sel => document.querySelector(sel);
+const tablesEl = el("#tables");
+const poolEl = el("#pool");
+
+function chipHTML(gid, seatNo) {
+  const g = state.guests[gid];
+  if (!g) return "";
+  const name = escapeHtml(g.name);
+  const seat = seatNo != null ? `<span class="seatno">${seatNo}</span>` : "";
+  return `<li class="chip" draggable="false" data-gid="${gid}">
+    ${seat}<span class="nm" title="${name}">${name}</span>
+    <button class="del" data-del="${gid}" title="Remove guest">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  </li>`;
+}
+
+function render() {
+  // pool
+  poolEl.dataset.container = "pool";
+  poolEl.innerHTML = state.containers.pool.map(gid => chipHTML(gid, null)).join("");
+  poolEl.classList.toggle("empty-hint", state.containers.pool.length === 0);
+  el("#poolCount").textContent = state.containers.pool.length;
+
+  // tables
+  if (state.tables.length === 0) {
+    tablesEl.innerHTML = "";
+    el("#emptyBoard").style.display = "block";
+  } else {
+    el("#emptyBoard").style.display = "none";
+    tablesEl.innerHTML = state.tables.map(t => {
+      const seated = state.containers[t.id] || [];
+      const overCap = seated.length > t.cap;
+      const full = seated.length === t.cap;
+      const seatsHtml = seated.map((gid, i) => chipHTML(gid, i + 1)).join("");
+      return `<div class="table-card ${overCap?'over-cap':''} ${full?'full':''}" data-table="${t.id}">
+        <div class="tc-head">
+          <input class="tc-name" value="${escapeHtml(t.name)}" data-rename="${t.id}" spellcheck="false">
+          <span class="cap">${seated.length}/${t.cap}</span>
+          <div class="tc-menu">
+            <button class="tc-menu-btn" data-tmenu="${t.id}">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+            </button>
+          </div>
+        </div>
+        <ul class="seats dropzone ${seated.length===0?'empty-hint':''}" data-container="${t.id}">${seatsHtml}</ul>
+      </div>`;
+    }).join("");
+  }
+  renderStats();
+  save();
+}
+
+function renderStats() {
+  const total = Object.keys(state.guests).length;
+  const seated = total - state.containers.pool.length;
+  const tables = state.tables.length;
+  let over = 0;
+  state.tables.forEach(t => { if ((state.containers[t.id]||[]).length > t.cap) over++; });
+  el("#stats").innerHTML =
+    `<span class="pill"><b>${total}</b> guests</span>` +
+    `<span class="pill"><b>${seated}</b> seated</span>` +
+    `<span class="pill"><b>${tables}</b> tables</span>` +
+    (over ? `<span class="pill warn"><b>${over}</b> over capacity</span>` : "");
+  el("#evtName").textContent = state.event;
+}
+
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------- Pointer drag & drop ---------- */
+let drag = null; // { gid, ghost, placeholder, offsetX, offsetY, started }
+
+document.addEventListener("pointerdown", e => {
+  const chip = e.target.closest(".chip");
+  if (!chip || e.target.closest(".del") || e.button !== 0) return;
+  const gid = chip.dataset.gid;
+  const rect = chip.getBoundingClientRect();
+  drag = {
+    gid, sourceChip: chip, started:false,
+    startX:e.clientX, startY:e.clientY,
+    offsetX:e.clientX - rect.left, offsetY:e.clientY - rect.top,
+    width:rect.width
+  };
+  chip.setPointerCapture(e.pointerId);
+});
+
+document.addEventListener("pointermove", e => {
+  if (!drag) return;
+  if (!drag.started) {
+    if (Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) < 5) return;
+    startDrag();
+  }
+  positionGhost(e.clientX, e.clientY);
+  updateDropTarget(e.clientX, e.clientY);
+});
+
+document.addEventListener("pointerup", e => {
+  if (!drag) return;
+  if (drag.started) commitDrop();
+  cleanupDrag();
+});
+
+function startDrag() {
+  drag.started = true;
+  const g = state.guests[drag.gid];
+  const ghost = document.createElement("div");
+  ghost.className = "chip ghost";
+  ghost.style.width = drag.width + "px";
+  ghost.innerHTML = `<span class="nm">${escapeHtml(g.name)}</span>`;
+  document.body.appendChild(ghost);
+  drag.ghost = ghost;
+  drag.sourceChip.classList.add("dragging");
+  const ph = document.createElement("li");
+  ph.className = "placeholder";
+  drag.placeholder = ph;
+}
+
+function positionGhost(x, y) {
+  drag.ghost.style.left = (x - drag.offsetX) + "px";
+  drag.ghost.style.top = (y - drag.offsetY) + "px";
+}
+
+function updateDropTarget(x, y) {
+  drag.ghost.style.display = "none";
+  const under = document.elementFromPoint(x, y);
+  drag.ghost.style.display = "";
+  document.querySelectorAll(".table-card.over").forEach(c => c.classList.remove("over"));
+  const zone = under && under.closest(".dropzone");
+  if (!zone) { if (drag.placeholder.parentNode) drag.placeholder.remove(); drag.targetZone = null; return; }
+  const card = zone.closest(".table-card");
+  if (card) card.classList.add("over");
+  drag.targetZone = zone;
+  // find insertion index
+  const chips = [...zone.querySelectorAll(".chip:not(.dragging)")];
+  let before = null;
+  for (const c of chips) {
+    const r = c.getBoundingClientRect();
+    if (y < r.top + r.height / 2) { before = c; break; }
+  }
+  if (before) zone.insertBefore(drag.placeholder, before);
+  else zone.appendChild(drag.placeholder);
+}
+
+function commitDrop() {
+  const zone = drag.targetZone;
+  if (!zone || !drag.placeholder.parentNode) return;
+  const container = zone.dataset.container;
+  const siblings = [...zone.children].filter(n => n.classList.contains("chip") || n === drag.placeholder);
+  const index = siblings.indexOf(drag.placeholder);
+  moveGuest(drag.gid, container, index);
+  render();
+}
+
+function cleanupDrag() {
+  if (drag) {
+    if (drag.ghost) drag.ghost.remove();
+    if (drag.placeholder && drag.placeholder.parentNode) drag.placeholder.remove();
+    if (drag.sourceChip) drag.sourceChip.classList.remove("dragging");
+  }
+  drag = null;
+}
+
+/* ---------- Event wiring ---------- */
+el("#btnAddGuest").onclick = () => {
+  const inp = el("#guestInput");
+  if (addGuest(inp.value)) { inp.value = ""; render(); }
+  inp.focus();
+};
+el("#guestInput").addEventListener("keydown", e => { if (e.key === "Enter") el("#btnAddGuest").click(); });
+
+el("#sortPool").onclick = () => {
+  state.containers.pool.sort((a,b) => state.guests[a].name.localeCompare(state.guests[b].name));
+  render(); toast("Sorted A–Z");
+};
+el("#clearPool").onclick = () => {
+  if (!state.containers.pool.length) return;
+  if (confirm("Delete all unassigned guests?")) {
+    state.containers.pool.slice().forEach(deleteGuest); render();
+  }
+};
+
+// delete chip / table rename / table menu (delegation)
+document.addEventListener("click", e => {
+  const del = e.target.closest("[data-del]");
+  if (del) { deleteGuest(del.dataset.del); render(); return; }
+  const tmenu = e.target.closest("[data-tmenu]");
+  if (tmenu) { e.stopPropagation(); openTableMenu(tmenu); return; }
+  // close any open popovers
+  document.querySelectorAll(".menu-pop.dyn").forEach(p => p.remove());
+  el("#morePop").style.display = "none";
+});
+
+document.addEventListener("input", e => {
+  const rn = e.target.closest("[data-rename]");
+  if (rn) {
+    const t = state.tables.find(x => x.id === rn.dataset.rename);
+    if (t) { t.name = rn.value; save(); }
+  }
+});
+
+function openTableMenu(btn) {
+  document.querySelectorAll(".menu-pop.dyn").forEach(p => p.remove());
+  const tid = btn.dataset.tmenu;
+  const t = state.tables.find(x => x.id === tid);
+  const pop = document.createElement("div");
+  pop.className = "menu-pop dyn";
+  pop.innerHTML = `
+    <button data-act="cap">Set seats (now ${t.cap})</button>
+    <button data-act="clear">Clear table</button>
+    <button class="danger" data-act="del">Delete table</button>`;
+  btn.parentNode.appendChild(pop);
+  pop.addEventListener("click", ev => {
+    const act = ev.target.closest("[data-act]")?.dataset.act;
+    if (act === "cap") {
+      const v = parseInt(prompt("Seats at this table:", t.cap), 10);
+      if (v > 0) { t.cap = v; render(); }
+    } else if (act === "clear") { clearTable(tid); render(); }
+    else if (act === "del") { if (confirm(`Delete "${t.name}"? Guests return to unassigned.`)) { deleteTable(tid); render(); } }
+    pop.remove();
+  });
+}
+
+// Add table modal
+el("#btnAddTable").onclick = () => el("#tableOverlay").classList.add("show");
+el("#tableAdd").onclick = () => {
+  const n = Math.max(1, parseInt(el("#numTables").value,10)||1);
+  const cap = Math.max(1, parseInt(el("#capTables").value,10)||10);
+  const prefix = el("#prefixTables").value.trim() || "Table";
+  addTables(n, cap, prefix);
+  el("#tableOverlay").classList.remove("show");
+  render();
+};
+
+// Bulk modal
+el("#btnBulk").onclick = () => { el("#bulkText").value=""; el("#bulkOverlay").classList.add("show"); el("#bulkText").focus(); };
+el("#bulkAdd").onclick = () => {
+  const n = addGuestsBulk(el("#bulkText").value);
+  el("#bulkOverlay").classList.remove("show");
+  render(); toast(`Added ${n} guest${n===1?"":"s"}`);
+};
+
+document.querySelectorAll("[data-close]").forEach(b => b.onclick = () => b.closest(".overlay").classList.remove("show"));
+document.querySelectorAll(".overlay").forEach(o => o.addEventListener("click", e => { if (e.target === o) o.classList.remove("show"); }));
+
+// More menu
+el("#btnMore").onclick = e => { e.stopPropagation(); const p = el("#morePop"); p.style.display = p.style.display==="none" ? "block" : "none"; };
+el("#btnCsv").onclick = exportCSV;
+el("#btnPrint").onclick = () => window.print();
+el("#btnRename").onclick = () => { const v = prompt("Event name:", state.event); if (v!=null){ state.event = v.trim()||"Untitled event"; render(); } };
+el("#btnSaveJson").onclick = saveBackup;
+el("#btnLoadJson").onclick = () => el("#fileInput").click();
+el("#btnReset").onclick = () => { if (confirm("Erase all tables and guests? This cannot be undone.")) { state = defaultState(); render(); } };
+el("#fileInput").onchange = loadBackup;
+el("#btnExport").onclick = exportXLSX;
+
+/* ---------- Export helpers ---------- */
+function seatingRows() {
+  // [ [table, seat, guest] ... ] then unassigned
+  const rows = [];
+  state.tables.forEach(t => {
+    const seated = state.containers[t.id] || [];
+    if (seated.length === 0) rows.push([t.name, "", ""]);
+    seated.forEach((gid, i) => rows.push([t.name, i+1, state.guests[gid]?.name || ""]));
+  });
+  state.containers.pool.forEach(gid => rows.push(["(Unassigned)", "", state.guests[gid]?.name || ""]));
+  return rows;
+}
+
+function exportCSV() {
+  const rows = [["Table","Seat","Guest"], ...seatingRows()];
+  const csv = rows.map(r => r.map(c => {
+    c = String(c);
+    return /[",\n]/.test(c) ? '"' + c.replace(/"/g,'""') + '"' : c;
+  }).join(",")).join("\r\n");
+  downloadBlob(new Blob([csv], {type:"text/csv"}), fileBase() + ".csv");
+  el("#morePop").style.display = "none";
+  toast("CSV exported");
+}
+
+function exportXLSX() {
+  const header = ["Table","Seat","Guest"];
+  const rows = [header, ...seatingRows()];
+  const blob = buildXLSX("Seating", rows);
+  downloadBlob(blob, fileBase() + ".xlsx");
+  toast("Excel file exported");
+}
+
+function fileBase() {
+  const safe = state.event.replace(/[^\w\- ]+/g,"").trim().replace(/\s+/g,"_") || "seating";
+  return safe + "_seating";
+}
+
+function saveBackup() {
+  downloadBlob(new Blob([JSON.stringify(state,null,2)],{type:"application/json"}), fileBase() + ".json");
+  el("#morePop").style.display = "none";
+  toast("Backup saved");
+}
+function loadBackup(e) {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const s = JSON.parse(r.result);
+      if (!s.containers) throw 0;
+      state = s; render(); toast("Backup loaded");
+    } catch(err){ alert("That doesn't look like a valid backup file."); }
+  };
+  r.readAsText(f);
+  e.target.value = "";
+}
+
+function downloadBlob(blob, name) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 100);
+}
+
+/* ---------- Minimal XLSX writer (no dependencies) ---------- */
+/* Builds a valid .xlsx (zip of XML parts) with inline strings. */
+function buildXLSX(sheetName, rows) {
+  const colName = n => { let s=""; n++; while(n>0){ const m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=(n-m-1)/26|0; } return s; };
+  const cell = (c, r, v) => {
+    const ref = colName(c) + (r+1);
+    if (typeof v === "number" && isFinite(v))
+      return `<c r="${ref}"><v>${v}</v></c>`;
+    const t = xmlEsc(String(v));
+    return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${t}</t></is></c>`;
+  };
+  const sheetRows = rows.map((row, r) =>
+    `<row r="${r+1}">${row.map((v,c)=>cell(c,r,v)).join("")}</row>`).join("");
+  const lastRef = colName(Math.max(0,(rows[0]||[]).length-1)) + Math.max(1,rows.length);
+  const sheetXml =
+`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<dimension ref="A1:${lastRef}"/>
+<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
+<cols><col min="1" max="1" width="22" customWidth="1"/><col min="2" max="2" width="7" customWidth="1"/><col min="3" max="3" width="30" customWidth="1"/></cols>
+<sheetData>${sheetRows}</sheetData>
+</worksheet>`;
+  const workbook =
+`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<sheets><sheet name="${xmlEsc(sheetName).slice(0,31)}" sheetId="1" r:id="rId1"/></sheets>
+</workbook>`;
+  const wbRels =
+`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+</Relationships>`;
+  const rootRels =
+`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`;
+  const contentTypes =
+`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+</Types>`;
+  const files = [
+    { name:"[Content_Types].xml", data:contentTypes },
+    { name:"_rels/.rels", data:rootRels },
+    { name:"xl/workbook.xml", data:workbook },
+    { name:"xl/_rels/workbook.xml.rels", data:wbRels },
+    { name:"xl/worksheets/sheet1.xml", data:sheetXml },
+  ];
+  return zipStore(files);
+}
+function xmlEsc(s){ return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c])); }
+
+/* CRC32 */
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c = (c&1)?(0xEDB88320^(c>>>1)):(c>>>1); t[n]=c>>>0; }
+  return t;
+})();
+function crc32(buf){ let c=0xFFFFFFFF; for(let i=0;i<buf.length;i++) c=CRC_TABLE[(c^buf[i])&0xFF]^(c>>>8); return (c^0xFFFFFFFF)>>>0; }
+
+/* Build a ZIP with stored (uncompressed) entries */
+function zipStore(files) {
+  const enc = new TextEncoder();
+  const parts = [];
+  const central = [];
+  let offset = 0;
+  const u16 = n => [n&0xFF,(n>>8)&0xFF];
+  const u32 = n => [n&0xFF,(n>>8)&0xFF,(n>>16)&0xFF,(n>>>24)&0xFF];
+  files.forEach(f => {
+    const nameBytes = enc.encode(f.name);
+    const data = enc.encode(f.data);
+    const crc = crc32(data);
+    const local = [].concat(
+      u32(0x04034b50), u16(20), u16(0), u16(0), u16(0), u16(0),
+      u32(crc), u32(data.length), u32(data.length),
+      u16(nameBytes.length), u16(0)
+    );
+    parts.push(new Uint8Array(local), nameBytes, data);
+    const cdr = [].concat(
+      u32(0x02014b50), u16(20), u16(20), u16(0), u16(0), u16(0), u16(0),
+      u32(crc), u32(data.length), u32(data.length),
+      u16(nameBytes.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(offset)
+    );
+    central.push(new Uint8Array(cdr), nameBytes);
+    offset += local.length + nameBytes.length + data.length;
+  });
+  const centralStart = offset;
+  let centralSize = 0;
+  central.forEach(c => centralSize += c.length);
+  const eocd = new Uint8Array([].concat(
+    u32(0x06054b50), u16(0), u16(0), u16(files.length), u16(files.length),
+    u32(centralSize), u32(centralStart), u16(0)
+  ));
+  return new Blob([...parts, ...central, eocd], {type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+}
+
+/* ---------- Toast ---------- */
+let toastTimer;
+function toast(msg) {
+  const t = el("#toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove("show"), 1800);
+}
+
+/* ---------- First run seed ---------- */
+if (state.tables.length === 0 && Object.keys(state.guests).length === 0) {
+  // start empty; nothing to seed
+}
+render();
+</script>
+</body>
+</html>
